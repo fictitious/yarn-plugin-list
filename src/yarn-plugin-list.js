@@ -5,6 +5,8 @@ module.exports = {
     const { BaseCommand } = require("@yarnpkg/cli");
     const { Command, Option } = require("clipanion");
     const { parseSyml } = require("@yarnpkg/parsers");
+    const { Configuration, Project } = require("@yarnpkg/core");
+    const { ppath } = require("@yarnpkg/fslib");
 
     class ListCommand extends BaseCommand {
       static paths = [["list"]];
@@ -25,11 +27,16 @@ module.exports = {
           );
         }
 
-        const packageJsonContents = fs.readFileSync("package.json", "utf-8");
+        const configuration = await Configuration.find(this.context.cwd, this.context.plugins);
+        const { project } = await Project.find(configuration, this.context.cwd);
+        const lockfilePath = ppath.join(project.topLevelWorkspace.cwd, configuration.get("lockfileFilename"));
+        const packageJsonPath = ppath.join(this.context.cwd, "package.json");
+
+        const packageJsonContents = fs.readFileSync(packageJsonPath, "utf-8");
         const { dependencies = {}, resolutions = {} } =
           JSON.parse(packageJsonContents);
 
-        const lockContents = fs.readFileSync("yarn.lock", "utf-8");
+        const lockContents = fs.readFileSync(lockfilePath, "utf-8");
         const resolved = parseSyml(lockContents);
 
         const trees = [];
